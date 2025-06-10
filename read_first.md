@@ -1,29 +1,28 @@
-# 🚨 CRITICAL DEVELOPMENT STANDARDS - READ FIRST 🚨
-
-## ⛔ ABSOLUTELY FORBIDDEN - ZERO TOLERANCE POLICY ⛔
+# READ THIS FIRST  !
 
 ### **NEVER ALLOWED - IMMEDIATE REJECTION:**
 
 1. **❌ NO DEMO CODE**
+
    - Never create demo versions
    - Never create simplified examples
    - Never create "proof of concept" code
    - All code must be production-ready from day one
-
 2. **❌ NO PLACEHOLDER CODE**
+
    - Never use placeholder functions
    - Never use placeholder classes
    - Never use placeholder variables
    - Never use placeholder comments like "TODO", "FIXME", "PLACEHOLDER"
    - Never use stub implementations
-
 3. **❌ NO SIMULATION CODE**
+
    - Never create simulated functionality
    - Never create mock implementations
    - Never create fake data generators
    - Never create test-only implementations
-
 4. **❌ NO HARDCODED SECTIONS**
+
    - Never hardcode values that should be configurable
    - Never hardcode API endpoints
    - Never hardcode file paths
@@ -35,26 +34,27 @@
 ### **PRODUCTION-GRADE CODE ONLY:**
 
 1. **🏆 FULL FUNCTIONAL IMPLEMENTATION**
+
    - Every function must be completely implemented
    - Every class must have full functionality
    - Every method must perform its intended purpose
    - Every feature must be production-ready
-
 2. **📚 COMPREHENSIVE DOCUMENTATION**
+
    - Complete docstrings for all functions/classes
    - Inline comments explaining complex logic
    - Type hints for all parameters and returns
    - Clear error handling documentation
-
 3. **🔒 ENTERPRISE-GRADE STANDARDS**
+
    - Proper error handling and logging
    - Input validation and sanitization
    - Security best practices
    - Performance optimization
    - Memory management
    - Resource cleanup
-
 4. **🧪 ROBUST TESTING**
+
    - Unit tests for all functionality
    - Integration tests for system components
    - Error case testing
@@ -66,24 +66,25 @@
 ### **AI-POWERED THESIS ASSISTANT STANDARDS:**
 
 1. **📖 ACADEMIC EXCELLENCE**
+
    - APA7 compliance engine must be perfect
    - Citation validation must be flawless
    - Bibliography generation must be accurate
    - No tolerance for citation errors
-
 2. **🤖 AI INTEGRATION**
+
    - OpenRouter API integration must be complete
    - Model selection interface must be fully functional
    - API key management must be secure
    - Response handling must be robust
-
 3. **📊 DATA PROCESSING**
+
    - PDF processing must handle all formats
    - Text extraction must be accurate
    - Semantic indexing must be comprehensive
    - Search functionality must be lightning-fast
-
 4. **🖥️ USER INTERFACE**
+
    - GUI must be fully responsive
    - All buttons and features must work
    - Error messages must be user-friendly
@@ -101,12 +102,13 @@
 ### **QUALITY GATES:**
 
 1. **Pre-Commit Validation**
+
    - Automated scanning for forbidden patterns
    - Code quality metrics must pass
    - Security scans must be clean
    - Performance benchmarks must be met
-
 2. **Peer Review Requirements**
+
    - Two senior developers must approve
    - Architecture review for major changes
    - Security review for sensitive components
@@ -130,6 +132,7 @@
 **This is not a suggestion - this is a MANDATE.**
 
 **Every line of code must be:**
+
 - ✅ Production-ready
 - ✅ Fully functional
 - ✅ Completely tested
@@ -138,6 +141,7 @@
 - ✅ Performance-optimized
 
 **NEVER NEVER EVER:**
+
 - ❌ Demo code
 - ❌ Placeholder code
 - ❌ Simulation code

@@ -1,0 +1,39 @@
+{
+  "Core Components": {
+    "Config": true,
+    "Exceptions": true,
+    "Types": true,
+    "Lazy Imports": true
+  },
+  "Document Processing": {
+    "Document Parser": true,
+    "Text Processor": true
+  },
+  "API Clients": {
+    "OpenRouter Client": true,
+    "Perplexity Client": true,
+    "Semantic Scholar Client": true
+  },
+  "Analysis Components": {
+    "Claim Detector": true,
+    "Citation Engine": true,
+    "APA7 Compliance": true,
+    "Hybrid Search": true
+  },
+  "GUI Components": {
+    "Main Window": true,
+    "Document Processor Widget": true,
+    "AI Chat Widget": true,
+    "Model Selector Widget": true,
+    "Settings Widget": true
+  },
+  "Configuration": {
+    "Config Creation": true,
+    "Config Get Method": true,
+    "Directory Creation": true
+  },
+  "Integration": {
+    "Main App Initialization": true,
+    "Component Status Check": true
+  }
+}

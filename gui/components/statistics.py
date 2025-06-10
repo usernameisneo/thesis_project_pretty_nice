@@ -279,10 +279,13 @@ class StatisticsWidget(ttk.Frame):
         self.perf_total_var = tk.StringVar(value="0.0s")
         ttk.Label(perf_grid, textvariable=self.perf_total_var).grid(row=0, column=3, sticky=tk.W)
         
-        # Memory usage (placeholder)
+        # Memory usage (real-time monitoring)
         ttk.Label(perf_grid, text="💾 Memory Usage:").grid(row=1, column=0, sticky=tk.W, padx=(0, 10), pady=(10, 0))
-        self.memory_usage_var = tk.StringVar(value="N/A")
+        self.memory_usage_var = tk.StringVar(value="0 MB")
         ttk.Label(perf_grid, textvariable=self.memory_usage_var).grid(row=1, column=1, sticky=tk.W, pady=(10, 0))
+
+        # Start memory monitoring
+        self._start_memory_monitoring()
         
         # Cache hit rate
         ttk.Label(perf_grid, text="🎯 Cache Hit Rate:").grid(
@@ -390,6 +393,33 @@ class StatisticsWidget(ttk.Frame):
         self.stats_data['citations']['apa7_compliant'] += apa7_compliant
         self._update_display()
     
+    def _start_memory_monitoring(self) -> None:
+        """Start real-time memory usage monitoring."""
+        self._update_memory_usage()
+
+    def _update_memory_usage(self) -> None:
+        """Update memory usage display."""
+        try:
+            import psutil
+
+            # Get current process memory usage
+            process = psutil.Process()
+            memory_info = process.memory_info()
+            memory_mb = memory_info.rss / (1024 * 1024)  # Convert to MB
+
+            # Update display
+            self.memory_usage_var.set(f"{memory_mb:.1f} MB")
+
+            # Schedule next update (every 5 seconds)
+            self.after(5000, self._update_memory_usage)
+
+        except ImportError:
+            # psutil not available, show static message
+            self.memory_usage_var.set("Monitor N/A")
+        except Exception as e:
+            logger.error(f"Memory monitoring error: {e}")
+            self.memory_usage_var.set("Error")
+
     def apply_theme(self, theme) -> None:
         """Apply theme to the widget."""
         # Theme application will be implemented with theme system

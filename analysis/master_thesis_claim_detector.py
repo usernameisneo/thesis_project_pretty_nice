@@ -880,9 +880,151 @@ class MasterThesisClaimDetector:
 
     def _generate_search_terms(self, sentence: str, keywords: List[str]) -> List[str]:
         """
-        Generates search terms. Placeholder.
+        Generates optimized search terms for finding supporting sources.
+
+        Creates multiple search strategies including exact phrases, keyword combinations,
+        academic variations, and domain-specific terms for comprehensive source discovery.
         """
-        return [sentence] + keywords
+        search_terms = []
+
+        # Extract the core claim (remove common prefixes/suffixes)
+        core_claim = sentence.strip()
+
+        # Remove common academic prefixes
+        prefixes_to_remove = [
+            'this study shows that', 'research indicates that', 'evidence suggests that',
+            'data shows that', 'analysis reveals that', 'findings suggest that',
+            'it has been found that', 'studies have shown that', 'it is known that'
+        ]
+
+        core_claim_lower = core_claim.lower()
+        for prefix in prefixes_to_remove:
+            if core_claim_lower.startswith(prefix):
+                core_claim = core_claim[len(prefix):].strip()
+                break
+
+        # Add the cleaned core claim as primary search term
+        if len(core_claim) > 10:
+            search_terms.append(core_claim)
+
+        # Generate keyword combinations (2-3 keywords)
+        if len(keywords) >= 2:
+            # Two-keyword combinations
+            for i in range(len(keywords)):
+                for j in range(i + 1, len(keywords)):
+                    combo = f"{keywords[i]} {keywords[j]}"
+                    search_terms.append(combo)
+
+            # Three-keyword combinations (if enough keywords)
+            if len(keywords) >= 3:
+                for i in range(len(keywords)):
+                    for j in range(i + 1, len(keywords)):
+                        for k in range(j + 1, len(keywords)):
+                            combo = f"{keywords[i]} {keywords[j]} {keywords[k]}"
+                            search_terms.append(combo)
+
+        # Add individual high-value keywords
+        priority_keywords = []
+        for keyword in keywords:
+            keyword_lower = keyword.lower()
+            # Prioritize academic and research terms
+            if any(term in keyword_lower for term in [
+                'research', 'study', 'analysis', 'data', 'evidence', 'theory',
+                'method', 'approach', 'model', 'framework', 'significant'
+            ]):
+                priority_keywords.append(keyword)
+
+        search_terms.extend(priority_keywords)
+
+        # Generate academic variations
+        academic_variations = []
+        for keyword in keywords[:3]:  # Top 3 keywords
+            variations = [
+                f"{keyword} research",
+                f"{keyword} study",
+                f"{keyword} analysis",
+                f"{keyword} evidence",
+                f"{keyword} literature",
+                f"research on {keyword}",
+                f"studies of {keyword}",
+                f"{keyword} methodology"
+            ]
+            academic_variations.extend(variations)
+
+        search_terms.extend(academic_variations[:10])  # Limit academic variations
+
+        # Extract and add quoted phrases (for exact matching)
+        quoted_phrases = re.findall(r'"([^"]+)"', sentence)
+        search_terms.extend(quoted_phrases)
+
+        # Add statistical terms if present
+        statistical_terms = []
+        statistical_patterns = [
+            r'(\d+(?:\.\d+)?%)', r'(p\s*[<>=]\s*0\.\d+)',
+            r'(significant\s+\w+)', r'(correlation\s+\w+)',
+            r'(confidence\s+interval)', r'(standard\s+deviation)'
+        ]
+
+        for pattern in statistical_patterns:
+            matches = re.findall(pattern, sentence, re.IGNORECASE)
+            statistical_terms.extend(matches)
+
+        search_terms.extend(statistical_terms)
+
+        # Add domain-specific search terms based on context
+        domain_terms = self._extract_domain_terms(sentence, keywords)
+        search_terms.extend(domain_terms)
+
+        # Clean and deduplicate search terms
+        cleaned_terms = []
+        seen = set()
+
+        for term in search_terms:
+            # Clean the term
+            cleaned_term = re.sub(r'[^\w\s-]', '', term).strip()
+            cleaned_term = re.sub(r'\s+', ' ', cleaned_term)
+
+            # Skip if too short or already seen
+            if len(cleaned_term) < 3 or cleaned_term.lower() in seen:
+                continue
+
+            cleaned_terms.append(cleaned_term)
+            seen.add(cleaned_term.lower())
+
+        # Sort by relevance (prioritize shorter, more focused terms)
+        cleaned_terms.sort(key=lambda x: (len(x.split()), len(x)))
+
+        # Return top 15 search terms
+        return cleaned_terms[:15]
+
+    def _extract_domain_terms(self, sentence: str, keywords: List[str]) -> List[str]:
+        """
+        Extract domain-specific terms based on sentence content and keywords.
+        """
+        domain_terms = []
+        sentence_lower = sentence.lower()
+
+        # Education domain
+        if any(term in sentence_lower for term in ['education', 'learning', 'teaching', 'student', 'school']):
+            domain_terms.extend(['educational research', 'pedagogy', 'curriculum', 'assessment'])
+
+        # Psychology domain
+        if any(term in sentence_lower for term in ['psychology', 'behavior', 'cognitive', 'mental', 'emotion']):
+            domain_terms.extend(['psychological research', 'behavioral studies', 'cognitive science'])
+
+        # Technology domain
+        if any(term in sentence_lower for term in ['technology', 'digital', 'computer', 'software', 'algorithm']):
+            domain_terms.extend(['technology research', 'computer science', 'digital studies'])
+
+        # Business domain
+        if any(term in sentence_lower for term in ['business', 'management', 'organization', 'company', 'market']):
+            domain_terms.extend(['business research', 'management studies', 'organizational behavior'])
+
+        # Health/Medical domain
+        if any(term in sentence_lower for term in ['health', 'medical', 'patient', 'treatment', 'clinical']):
+            domain_terms.extend(['medical research', 'health studies', 'clinical trials'])
+
+        return domain_terms[:5]  # Limit domain terms
 
     def _get_sentence_context(self, sentence: str, paragraph: str) -> Tuple[str, str]:
         """

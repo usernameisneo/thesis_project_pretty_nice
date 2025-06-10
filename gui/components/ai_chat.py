@@ -56,6 +56,7 @@ class AIChatWidget(ttk.Frame):
         self.current_model = None
         self.conversation_history = []
         self.is_streaming = False
+        self.document_context = ""
         
         self._setup_ui()
         self._initialize_client()
@@ -322,44 +323,74 @@ class AIChatWidget(ttk.Frame):
             self.is_streaming = True
             self.after(0, lambda: self.status_var.set("Generating response..."))
             self.after(0, lambda: self.send_button.config(state='disabled'))
-            
+
+            # Check if API key is configured
+            api_key = self.config.get('openrouter_api_key', '')
+            if not api_key:
+                self.after(0, self._add_system_message, "❌ OpenRouter API key not configured. Please set it in Settings.")
+                return
+
+            # Ensure client has API key
+            if not self.openrouter_client.api_key:
+                self.openrouter_client.set_api_key(api_key)
+
             # Prepare conversation context
             messages = []
-            
+
             # Add system message if using context
             if self.use_context_var.get():
+                system_content = "You are an AI assistant helping with academic thesis research. Use the provided document context to give accurate, well-sourced responses."
+
+                # Add document context if available
+                if hasattr(self, 'document_context') and self.document_context:
+                    system_content += f"\n\nDocument Context:\n{self.document_context[:2000]}..."
+
                 messages.append({
                     "role": "system",
-                    "content": "You are an AI assistant helping with academic thesis research. Use the provided document context to give accurate, well-sourced responses."
+                    "content": system_content
                 })
-            
+
             # Add conversation history (last 10 messages)
             for msg in self.conversation_history[-10:]:
                 messages.append(msg)
-            
+
             # Add current message
             messages.append({"role": "user", "content": message})
-            
-            # Send to OpenRouter
-            response = self.openrouter_client.chat_completion(
-                model=self.current_model,
-                messages=messages,
-                max_tokens=1000,
-                temperature=0.7
-            )
-            
-            # Extract response text
-            if response and 'choices' in response and response['choices']:
-                ai_response = response['choices'][0]['message']['content']
-                
-                # Add to conversation history
-                self.conversation_history.append({"role": "user", "content": message})
-                self.conversation_history.append({"role": "assistant", "content": ai_response})
-                
-                # Display response
-                self.after(0, self._add_assistant_message, ai_response)
-            else:
-                self.after(0, self._add_system_message, "No response received from AI.")
+
+            # Send to OpenRouter with error handling
+            try:
+                response = self.openrouter_client.chat_completion(
+                    model=self.current_model,
+                    messages=messages,
+                    max_tokens=1000,
+                    temperature=0.7
+                )
+
+                # Extract response text
+                if response and 'choices' in response and response['choices']:
+                    ai_response = response['choices'][0]['message']['content']
+
+                    # Add to conversation history
+                    self.conversation_history.append({"role": "user", "content": message})
+                    self.conversation_history.append({"role": "assistant", "content": ai_response})
+
+                    # Display response
+                    self.after(0, self._add_assistant_message, ai_response)
+                else:
+                    self.after(0, self._add_system_message, "❌ No response received from AI. Please check your API key and model selection.")
+
+            except Exception as api_error:
+                error_msg = str(api_error)
+                if "401" in error_msg or "unauthorized" in error_msg.lower():
+                    self.after(0, self._add_system_message, "❌ API authentication failed. Please check your OpenRouter API key in Settings.")
+                elif "429" in error_msg or "rate limit" in error_msg.lower():
+                    self.after(0, self._add_system_message, "❌ Rate limit exceeded. Please wait a moment before trying again.")
+                elif "400" in error_msg or "bad request" in error_msg.lower():
+                    self.after(0, self._add_system_message, "❌ Invalid request. Please check your model selection and try again.")
+                else:
+                    self.after(0, self._add_system_message, f"❌ API Error: {error_msg}")
+
+                logger.error(f"OpenRouter API error: {api_error}")
             
         except Exception as e:
             logger.error(f"AI chat error: {e}")
@@ -484,3 +515,36 @@ class AIChatWidget(ttk.Frame):
         """Apply theme to the widget."""
         # Theme application will be implemented with theme system
         pass
+
+    def set_document_context(self, context: str) -> None:
+        """
+        Set document context for AI conversations.
+
+        Args:
+            context: Document context to provide to the AI
+        """
+        self.document_context = context
+        logger.info(f"Document context set ({len(context)} characters)")
+
+    def clear_document_context(self) -> None:
+        """Clear the document context."""
+        self.document_context = ""
+        logger.info("Document context cleared")
+
+    def get_conversation_history(self) -> List[Dict[str, str]]:
+        """
+        Get the current conversation history.
+
+        Returns:
+            List of conversation messages
+        """
+        return self.conversation_history.copy()
+
+    def clear_conversation_history(self) -> None:
+        """Clear the conversation history."""
+        self.conversation_history.clear()
+        self.chat_display.config(state=tk.NORMAL)
+        self.chat_display.delete("1.0", tk.END)
+        self.chat_display.config(state=tk.DISABLED)
+        self._add_system_message("Conversation history cleared.")
+        logger.info("Conversation history cleared")

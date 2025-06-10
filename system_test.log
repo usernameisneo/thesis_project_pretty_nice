@@ -1,0 +1,15 @@
+2025-06-10 23:04:45,609 - __main__ - INFO - System Tester initialized
+2025-06-10 23:04:45,610 - __main__ - INFO - Starting comprehensive system tests
+2025-06-10 23:05:08,890 - __main__ - ERROR - Failed to import reasoning.enhanced_citation_engine: No module named 'reasoning.semantic_matcher'
+2025-06-10 23:05:10,163 - __main__ - ERROR - Failed to import gui.main_window: cannot import name 'ApplicationError' from 'core.exceptions' (C:\Users\henri\Desktop\thesis_project MANUS 8 June 2025\thesis_project_fixed\thesis_project\core\exceptions.py)
+2025-06-10 23:05:10,386 - __main__ - ERROR - Integration test failed: cannot import name 'ApplicationError' from 'core.exceptions' (C:\Users\henri\Desktop\thesis_project MANUS 8 June 2025\thesis_project_fixed\thesis_project\core\exceptions.py)
+2025-06-10 23:08:33,285 - __main__ - INFO - System Tester initialized
+2025-06-10 23:08:33,286 - __main__ - INFO - Starting comprehensive system tests
+2025-06-10 23:08:34,875 - main - INFO - AI-Powered Thesis Assistant initialized
+2025-06-10 23:08:34,875 - main - INFO - Version: 2.0 - Production Grade
+2025-06-10 23:08:34,876 - main - INFO - Project root: C:\Users\henri\Desktop\thesis_project MANUS 8 June 2025\thesis_project_fixed\thesis_project
+2025-06-10 23:09:34,743 - __main__ - INFO - System Tester initialized
+2025-06-10 23:09:34,743 - __main__ - INFO - Starting comprehensive system tests
+2025-06-10 23:09:36,600 - main - INFO - AI-Powered Thesis Assistant initialized
+2025-06-10 23:09:36,600 - main - INFO - Version: 2.0 - Production Grade
+2025-06-10 23:09:36,600 - main - INFO - Project root: C:\Users\henri\Desktop\thesis_project MANUS 8 June 2025\thesis_project_fixed\thesis_project

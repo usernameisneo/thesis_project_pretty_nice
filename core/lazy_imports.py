@@ -248,3 +248,70 @@ def lazy_import(module_name: str, package: Optional[str] = None):
     except ImportError as e:
         logger.error(f"Failed to import {module_name}: {e}")
         raise
+
+
+class LazyImporter:
+    """
+    Lazy importer class for managing module imports.
+
+    This class provides a convenient interface for lazy loading of modules,
+    particularly useful for optional dependencies and heavy libraries.
+    """
+
+    def __init__(self):
+        """Initialize the lazy importer."""
+        self._module_cache = {}
+
+    def import_module(self, module_name: str, package: Optional[str] = None):
+        """
+        Import a module lazily with caching.
+
+        Args:
+            module_name: Name of the module to import
+            package: Package name for relative imports
+
+        Returns:
+            Imported module
+
+        Raises:
+            ImportError: If module cannot be imported
+        """
+        cache_key = f"{package}.{module_name}" if package else module_name
+
+        if cache_key not in self._module_cache:
+            try:
+                import importlib
+                module = importlib.import_module(module_name, package)
+                self._module_cache[cache_key] = module
+                logger.debug(f"Lazily imported module: {cache_key}")
+            except ImportError as e:
+                logger.error(f"Failed to import {module_name}: {e}")
+                raise
+
+        return self._module_cache[cache_key]
+
+    def is_available(self, module_name: str, package: Optional[str] = None) -> bool:
+        """
+        Check if a module is available without importing it.
+
+        Args:
+            module_name: Name of the module to check
+            package: Package name for relative imports
+
+        Returns:
+            True if module is available
+        """
+        try:
+            import importlib.util
+            if package:
+                spec = importlib.util.find_spec(f"{package}.{module_name}")
+            else:
+                spec = importlib.util.find_spec(module_name)
+            return spec is not None
+        except (ImportError, ValueError):
+            return False
+
+    def clear_cache(self):
+        """Clear the module cache."""
+        self._module_cache.clear()
+        logger.info("Module cache cleared")

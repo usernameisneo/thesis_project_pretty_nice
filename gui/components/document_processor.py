@@ -22,7 +22,7 @@ from tkinter import ttk, filedialog, messagebox
 import threading
 import logging
 from pathlib import Path
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Tuple
 import asyncio
 
 # Local imports
@@ -426,6 +426,44 @@ class DocumentProcessorWidget(ttk.Frame):
         if messagebox.askyesno("Clear Documents", "Remove all documents from the list?"):
             self.doc_tree.delete(*self.doc_tree.get_children())
             self.status_var.set("Document list cleared")
+
+    def get_processed_documents(self) -> List[Tuple[str, str, Any]]:
+        """
+        Get list of processed documents with their content and metadata.
+
+        Returns:
+            List of tuples containing (file_path, text_content, metadata)
+        """
+        processed_docs = []
+
+        for item_id in self.doc_tree.get_children():
+            values = self.doc_tree.item(item_id, 'values')
+            if len(values) >= 3 and values[2] == 'Completed':  # Status is 'Completed'
+                file_path = values[0]  # File path
+
+                try:
+                    # Re-parse the document to get content
+                    from processing.document_parser import parse_document
+                    text, metadata = parse_document(file_path)
+                    processed_docs.append((file_path, text, metadata))
+                except Exception as e:
+                    logger.warning(f"Could not re-parse {file_path}: {e}")
+                    continue
+
+        return processed_docs
+
+    def get_document_count(self) -> int:
+        """Get the total number of documents in the list."""
+        return len(self.doc_tree.get_children())
+
+    def get_processed_document_count(self) -> int:
+        """Get the number of successfully processed documents."""
+        count = 0
+        for item_id in self.doc_tree.get_children():
+            values = self.doc_tree.item(item_id, 'values')
+            if len(values) >= 3 and values[2] == 'Completed':
+                count += 1
+        return count
     
     def _on_document_select(self, event) -> None:
         """Handle document selection in the tree."""

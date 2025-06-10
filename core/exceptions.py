@@ -8,6 +8,11 @@ class ThesisAssistantError(Exception):
     pass
 
 
+class ApplicationError(ThesisAssistantError):
+    """Raised when there's a general application error."""
+    pass
+
+
 class ConfigurationError(ThesisAssistantError):
     """Raised when there's a configuration error."""
     pass

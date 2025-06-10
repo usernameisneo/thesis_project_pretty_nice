@@ -36,6 +36,7 @@ from indexing.hybrid_search import HybridSearchEngine
 from analysis.master_thesis_claim_detector import MasterThesisClaimDetector, DetectedClaim
 from reasoning.advanced_citation_validator import AdvancedCitationValidator, ValidationResult
 from reasoning.apa7_compliance_engine import APA7ComplianceEngine, APA7ValidationResult
+from reasoning.semantic_matcher import SemanticMatcher
 from api.openrouter_client import OpenRouterClient
 
 logger = logging.getLogger(__name__)
@@ -112,9 +113,15 @@ class MasterThesisReferenceSystem:
         self.text_processor = TextProcessor()
         self.search_engine = HybridSearchEngine(str(self.index_directory))
         self.claim_detector = MasterThesisClaimDetector(openrouter_client)
+
+        # Initialize semantic matcher
+        self.semantic_matcher = SemanticMatcher(
+            cache_directory=str(self.index_directory / "semantic_cache")
+        )
+
         self.citation_validator = AdvancedCitationValidator(
-            openrouter_client, 
-            None,  # Will be initialized with semantic matcher
+            openrouter_client,
+            self.semantic_matcher,
             min_confidence_threshold,
             enable_human_review
         )

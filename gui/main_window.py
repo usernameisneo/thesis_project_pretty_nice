@@ -168,6 +168,9 @@ class ThesisAssistantGUI:
         
         # Create status bar
         self._create_status_bar(main_frame)
+
+        # Set up component connections
+        self._setup_component_connections()
     
     def _create_document_tab(self) -> None:
         """Create the document processing tab."""
@@ -254,6 +257,41 @@ class ThesisAssistantGUI:
             length=200
         )
         self.progress_bar.pack(side=tk.RIGHT, padx=(10, 0))
+
+    def _setup_component_connections(self) -> None:
+        """Set up connections between components for data sharing."""
+        # Connect document processor to AI chat for context sharing
+        if 'document_processor' in self.widgets and 'ai_chat' in self.widgets:
+            # Set up a callback to update AI chat context when documents are processed
+            doc_processor = self.widgets['document_processor']
+            ai_chat = self.widgets['ai_chat']
+
+            # Store original process method
+            original_process = doc_processor._process_documents
+
+            def enhanced_process():
+                # Call original processing
+                original_process()
+
+                # Update AI chat context with processed documents
+                try:
+                    processed_docs = doc_processor.get_processed_documents()
+                    if processed_docs:
+                        # Create context from first few documents
+                        context_parts = []
+                        for doc_path, doc_text, _ in processed_docs[:3]:  # Limit to first 3 docs
+                            doc_name = Path(doc_path).name
+                            context_parts.append(f"Document: {doc_name}\n{doc_text[:1000]}...")
+
+                        combined_context = "\n\n".join(context_parts)
+                        ai_chat.set_document_context(combined_context)
+
+                        logger.info(f"Updated AI chat context with {len(processed_docs)} documents")
+                except Exception as e:
+                    logger.warning(f"Failed to update AI chat context: {e}")
+
+            # Replace the process method
+            doc_processor._process_documents = enhanced_process
     
     def _apply_theme(self) -> None:
         """Apply the current theme to all widgets."""
@@ -337,19 +375,263 @@ class ThesisAssistantGUI:
         self.notebook.select(2)  # Switch to analysis tab
     
     def _run_analysis(self) -> None:
-        """Run thesis analysis."""
-        self.update_status("Starting analysis...")
-        # Implementation will be added
-    
+        """Run comprehensive thesis analysis."""
+        try:
+            self.update_status("Starting comprehensive analysis...")
+
+            # Check if we have documents to analyze
+            doc_processor = self.widgets.get('document_processor')
+            if not doc_processor or not doc_processor.get_processed_documents():
+                messagebox.showwarning("No Documents", "Please process some documents first.")
+                return
+
+            # Get thesis file from user
+            thesis_file = filedialog.askopenfilename(
+                title="Select Thesis File",
+                filetypes=[
+                    ("PDF files", "*.pdf"),
+                    ("Text files", "*.txt"),
+                    ("Markdown files", "*.md"),
+                    ("All files", "*.*")
+                ]
+            )
+
+            if not thesis_file:
+                return
+
+            # Run analysis in background thread
+            import threading
+            threading.Thread(
+                target=self._run_analysis_thread,
+                args=(thesis_file,),
+                daemon=True
+            ).start()
+
+        except Exception as e:
+            logger.error(f"Analysis failed: {e}")
+            messagebox.showerror("Analysis Error", f"Failed to start analysis: {e}")
+
+    def _run_analysis_thread(self, thesis_file: str) -> None:
+        """Run analysis in background thread."""
+        try:
+            from scripts.complete_thesis_analysis import CompleteThesisAnalysisSystem
+            import asyncio
+
+            async def run_analysis():
+                system = CompleteThesisAnalysisSystem()
+                await system.initialize_system()
+
+                # Get sources directory from document processor
+                sources_dir = self.config.get('data_dir', 'data')
+                output_dir = Path(thesis_file).parent / "analysis_output"
+
+                await system.run_complete_analysis(
+                    thesis_file=thesis_file,
+                    sources_directory=sources_dir,
+                    output_directory=str(output_dir)
+                )
+
+            # Update status
+            self.after(0, lambda: self.update_status("Running comprehensive analysis..."))
+
+            # Run analysis
+            asyncio.run(run_analysis())
+
+            # Update status on completion
+            self.after(0, lambda: self.update_status("Analysis completed successfully!"))
+            self.after(0, lambda: messagebox.showinfo("Analysis Complete", "Thesis analysis completed successfully!"))
+
+        except Exception as e:
+            logger.error(f"Analysis thread failed: {e}")
+            self.after(0, lambda: self.update_status(f"Analysis failed: {e}"))
+            self.after(0, lambda: messagebox.showerror("Analysis Error", f"Analysis failed: {e}"))
+
     def _validate_citations(self) -> None:
-        """Validate citations."""
-        self.update_status("Validating citations...")
-        # Implementation will be added
-    
+        """Validate citations in processed documents."""
+        try:
+            self.update_status("Validating citations...")
+
+            # Check if we have documents to validate
+            doc_processor = self.widgets.get('document_processor')
+            if not doc_processor or not doc_processor.get_processed_documents():
+                messagebox.showwarning("No Documents", "Please process some documents first.")
+                return
+
+            # Run validation in background thread
+            import threading
+            threading.Thread(
+                target=self._validate_citations_thread,
+                daemon=True
+            ).start()
+
+        except Exception as e:
+            logger.error(f"Citation validation failed: {e}")
+            messagebox.showerror("Validation Error", f"Failed to validate citations: {e}")
+
+    def _validate_citations_thread(self) -> None:
+        """Validate citations in background thread."""
+        try:
+            from reasoning.enhanced_citation_engine import EnhancedCitationEngine
+            from reasoning.apa7_compliance_engine import APA7ComplianceEngine
+
+            # Initialize engines
+            citation_engine = EnhancedCitationEngine()
+            apa7_engine = APA7ComplianceEngine()
+
+            # Get processed documents
+            doc_processor = self.widgets.get('document_processor')
+            documents = doc_processor.get_processed_documents()
+
+            validation_results = []
+            total_docs = len(documents)
+
+            for i, (doc_path, doc_text, doc_metadata) in enumerate(documents):
+                # Update progress
+                progress = (i / total_docs) * 100
+                self.after(0, lambda p=progress: self.update_status(f"Validating citations... {p:.1f}%"))
+
+                # Validate citations in document
+                citations = citation_engine.extract_citations(doc_text)
+                apa7_compliance = apa7_engine.validate_citations(citations)
+
+                validation_results.append({
+                    'document': Path(doc_path).name,
+                    'citations_found': len(citations),
+                    'apa7_compliant': sum(1 for c in apa7_compliance if c.is_compliant),
+                    'issues': [c.issues for c in apa7_compliance if not c.is_compliant]
+                })
+
+            # Show results
+            self._show_validation_results(validation_results)
+
+        except Exception as e:
+            logger.error(f"Citation validation thread failed: {e}")
+            self.after(0, lambda: self.update_status(f"Validation failed: {e}"))
+            self.after(0, lambda: messagebox.showerror("Validation Error", f"Citation validation failed: {e}"))
+
+    def _show_validation_results(self, results: list) -> None:
+        """Show citation validation results."""
+        # Create results window
+        results_window = tk.Toplevel(self)
+        results_window.title("Citation Validation Results")
+        results_window.geometry("600x400")
+
+        # Create text widget with scrollbar
+        frame = ttk.Frame(results_window)
+        frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+
+        text_widget = tk.Text(frame, wrap=tk.WORD)
+        scrollbar = ttk.Scrollbar(frame, orient=tk.VERTICAL, command=text_widget.yview)
+        text_widget.configure(yscrollcommand=scrollbar.set)
+
+        text_widget.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+
+        # Format results
+        results_text = "CITATION VALIDATION RESULTS\n" + "="*50 + "\n\n"
+
+        for result in results:
+            results_text += f"Document: {result['document']}\n"
+            results_text += f"Citations Found: {result['citations_found']}\n"
+            results_text += f"APA7 Compliant: {result['apa7_compliant']}\n"
+
+            if result['issues']:
+                results_text += "Issues Found:\n"
+                for issues in result['issues']:
+                    for issue in issues:
+                        results_text += f"  - {issue}\n"
+
+            results_text += "\n" + "-"*30 + "\n\n"
+
+        text_widget.insert(tk.END, results_text)
+        text_widget.config(state=tk.DISABLED)
+
+        self.after(0, lambda: self.update_status("Citation validation completed"))
+
     def _generate_bibliography(self) -> None:
-        """Generate bibliography."""
-        self.update_status("Generating bibliography...")
-        # Implementation will be added
+        """Generate bibliography from processed documents."""
+        try:
+            self.update_status("Generating bibliography...")
+
+            # Check if we have documents to process
+            doc_processor = self.widgets.get('document_processor')
+            if not doc_processor or not doc_processor.get_processed_documents():
+                messagebox.showwarning("No Documents", "Please process some documents first.")
+                return
+
+            # Get output file from user
+            output_file = filedialog.asksaveasfilename(
+                title="Save Bibliography",
+                defaultextension=".txt",
+                filetypes=[
+                    ("Text files", "*.txt"),
+                    ("Markdown files", "*.md"),
+                    ("All files", "*.*")
+                ]
+            )
+
+            if not output_file:
+                return
+
+            # Run generation in background thread
+            import threading
+            threading.Thread(
+                target=self._generate_bibliography_thread,
+                args=(output_file,),
+                daemon=True
+            ).start()
+
+        except Exception as e:
+            logger.error(f"Bibliography generation failed: {e}")
+            messagebox.showerror("Generation Error", f"Failed to generate bibliography: {e}")
+
+    def _generate_bibliography_thread(self, output_file: str) -> None:
+        """Generate bibliography in background thread."""
+        try:
+            from reasoning.enhanced_citation_engine import EnhancedCitationEngine
+            from reasoning.apa7_compliance_engine import APA7ComplianceEngine
+
+            # Initialize engines
+            citation_engine = EnhancedCitationEngine()
+            apa7_engine = APA7ComplianceEngine()
+
+            # Get processed documents
+            doc_processor = self.widgets.get('document_processor')
+            documents = doc_processor.get_processed_documents()
+
+            all_citations = []
+            total_docs = len(documents)
+
+            for i, (doc_path, doc_text, doc_metadata) in enumerate(documents):
+                # Update progress
+                progress = (i / total_docs) * 100
+                self.after(0, lambda p=progress: self.update_status(f"Extracting citations... {p:.1f}%"))
+
+                # Extract citations from document
+                citations = citation_engine.extract_citations(doc_text)
+                all_citations.extend(citations)
+
+            # Remove duplicates and format
+            unique_citations = list({c.id: c for c in all_citations}.values())
+            formatted_bibliography = apa7_engine.format_bibliography(unique_citations)
+
+            # Save to file
+            with open(output_file, 'w', encoding='utf-8') as f:
+                f.write("BIBLIOGRAPHY\n")
+                f.write("="*50 + "\n\n")
+                f.write(formatted_bibliography)
+
+            # Show completion message
+            self.after(0, lambda: self.update_status("Bibliography generated successfully"))
+            self.after(0, lambda: messagebox.showinfo(
+                "Bibliography Generated",
+                f"Bibliography saved to:\n{output_file}\n\nFound {len(unique_citations)} unique citations."
+            ))
+
+        except Exception as e:
+            logger.error(f"Bibliography generation thread failed: {e}")
+            self.after(0, lambda: self.update_status(f"Generation failed: {e}"))
+            self.after(0, lambda: messagebox.showerror("Generation Error", f"Bibliography generation failed: {e}"))
     
     def _test_api_connections(self) -> None:
         """Test API connections."""

@@ -1,0 +1,8 @@
+2025-06-10 23:06:38,478 - __main__ - INFO - AI-Powered Thesis Assistant initialized
+2025-06-10 23:06:38,479 - __main__ - INFO - Version: 2.0 - Production Grade
+2025-06-10 23:06:38,479 - __main__ - INFO - Project root: C:\Users\henri\Desktop\thesis_project MANUS 8 June 2025\thesis_project_fixed\thesis_project
+2025-06-10 23:06:39,888 - core.lazy_imports - ERROR - Failed to import cli.main: No module named 'reasoning.semantic_matcher'
+2025-06-10 23:06:39,891 - core.lazy_imports - ERROR - Failed to import reasoning.enhanced_citation_engine: No module named 'reasoning.semantic_matcher'
+2025-06-10 23:08:22,471 - __main__ - INFO - AI-Powered Thesis Assistant initialized
+2025-06-10 23:08:22,472 - __main__ - INFO - Version: 2.0 - Production Grade
+2025-06-10 23:08:22,472 - __main__ - INFO - Project root: C:\Users\henri\Desktop\thesis_project MANUS 8 June 2025\thesis_project_fixed\thesis_project

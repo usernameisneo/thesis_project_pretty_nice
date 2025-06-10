@@ -37,6 +37,7 @@ from api.perplexity_client import PerplexityClient, PerplexityResponse
 from api.openrouter_client import OpenRouterClient
 from reasoning.advanced_citation_validator import AdvancedCitationValidator, ValidationResult
 from reasoning.apa7_compliance_engine import APA7ComplianceEngine, APA7ValidationResult
+from reasoning.semantic_matcher import SemanticMatcher
 from analysis.master_thesis_claim_detector import DetectedClaim
 
 logger = logging.getLogger(__name__)
@@ -156,11 +157,16 @@ class EnhancedCitationEngine:
         )
         
         self.openrouter = OpenRouterClient(api_key=openrouter_api_key)
-        
+
+        # Initialize semantic matcher
+        self.semantic_matcher = SemanticMatcher(
+            cache_directory=str(Path(cache_directory) / "semantic_cache")
+        )
+
         # Initialize validation engines
         self.citation_validator = AdvancedCitationValidator(
             openrouter_client=self.openrouter,
-            semantic_matcher=None,  # Will be initialized
+            semantic_matcher=self.semantic_matcher,
             min_confidence_threshold=min_confidence_threshold,
             enable_human_review=enable_human_review
         )
