@@ -1,0 +1,2 @@
+************* Module analysis.master_thesis_claim_detector
+app_analysis/analysis/master_thesis_claim_detector.py:280:46: E0001: Parsing failed: 'f-string: expecting '}' (analysis.master_thesis_claim_detector, line 280)' (syntax-error)

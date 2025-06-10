@@ -1,0 +1,71 @@
+{
+  "api_keys": {
+    "openrouter_api_key": "YOUR_OPENROUTER_API_KEY_HERE",
+    "perplexity_api_key": "YOUR_PERPLEXITY_API_KEY_HERE",
+    "semantic_scholar_api_key": "YOUR_SEMANTIC_SCHOLAR_API_KEY_HERE"
+  },
+  "system_configuration": {
+    "index_directory": "complete_thesis_index",
+    "cache_directory": "complete_citation_cache",
+    "min_confidence_threshold": 0.75,
+    "enable_human_review": true,
+    "max_concurrent_requests": 5
+  },
+  "processing_settings": {
+    "chunk_size": 512,
+    "chunk_overlap": 50,
+    "max_chunks_per_document": 1000,
+    "enable_ocr": true,
+    "supported_formats": [".pdf", ".txt", ".md", ".doc", ".docx"]
+  },
+  "search_configuration": {
+    "vector_search_threshold": 0.3,
+    "keyword_search_threshold": 0.2,
+    "hybrid_search_weights": {
+      "vector": 0.7,
+      "keyword": 0.3
+    },
+    "max_search_results": 10
+  },
+  "citation_validation": {
+    "semantic_weight": 0.3,
+    "factual_weight": 0.25,
+    "temporal_weight": 0.2,
+    "credibility_weight": 0.25,
+    "min_semantic_threshold": 0.6,
+    "require_peer_reviewed": false,
+    "max_citation_age_years": 15
+  },
+  "apa7_compliance": {
+    "strict_formatting": true,
+    "auto_correct_errors": true,
+    "require_doi": false,
+    "prefer_journal_articles": true,
+    "max_authors_before_etal": 7
+  },
+  "api_rate_limits": {
+    "semantic_scholar_requests_per_second": 10.0,
+    "perplexity_requests_per_minute": 60.0,
+    "openrouter_requests_per_minute": 200.0
+  },
+  "logging": {
+    "level": "INFO",
+    "file": "complete_thesis_analysis.log",
+    "max_file_size_mb": 100,
+    "backup_count": 5
+  },
+  "output_settings": {
+    "generate_bibliography": true,
+    "generate_citation_report": true,
+    "generate_human_review_queue": true,
+    "save_analysis_data": true,
+    "export_formats": ["json", "txt", "csv"]
+  },
+  "performance_tuning": {
+    "enable_caching": true,
+    "cache_ttl_hours": 24,
+    "batch_processing_size": 10,
+    "timeout_seconds": 60,
+    "max_retries": 3
+  }
+}
