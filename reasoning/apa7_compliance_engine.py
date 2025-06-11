@@ -186,20 +186,28 @@ class APA7ComplianceEngine:
         """
         try:
             formatted_citations = []
-            
+
             for citation in citations:
-                # Validate and format each citation
-                validation_result = self.validate_citation(citation.formatted_citation, citation.metadata)
-                formatted_citations.append(validation_result.formatted_citation)
-            
+                # Use the built-in APA7 formatting method
+                if hasattr(citation, 'to_apa7'):
+                    apa7_citation = citation.to_apa7()
+                    # Validate the formatted citation
+                    validation_result = self.validate_citation(apa7_citation, None)
+                    formatted_citations.append(validation_result.formatted_citation)
+                else:
+                    # Fallback for other citation formats
+                    citation_text = str(citation)
+                    validation_result = self.validate_citation(citation_text, None)
+                    formatted_citations.append(validation_result.formatted_citation)
+
             # Sort alphabetically by first author's last name
             formatted_citations.sort()
-            
+
             # Create bibliography
             bibliography = "References\n\n"
             for citation in formatted_citations:
                 bibliography += f"{citation}\n\n"
-            
+
             return bibliography.strip()
             
         except Exception as e:
@@ -293,9 +301,503 @@ class APA7ComplianceEngine:
             result.formatting_errors.append('Missing periods after author and title')
 
     def _format_citation(self, citation_text: str, citation_type: CitationType, metadata: Optional[DocumentMetadata]) -> str:
-        """Format citation according to APA7 standards."""
-        # Basic formatting - can be enhanced
-        return citation_text.strip()
+        """
+        Format citation according to APA7 standards with comprehensive formatting rules.
+
+        This method applies professional APA7 formatting based on citation type:
+        - Journal articles: Author, A. A. (Year). Title. Journal Name, Volume(Issue), pages.
+        - Books: Author, A. A. (Year). Title. Publisher.
+        - Book chapters: Author, A. A. (Year). Chapter title. In B. B. Editor (Ed.), Book title (pp. xx-xx). Publisher.
+        - Conference papers: Author, A. A. (Year). Title. In Conference proceedings (pp. xx-xx).
+        - Websites: Author, A. A. (Year, Month Day). Title. Site Name. URL
+
+        Args:
+            citation_text: Raw citation text
+            citation_type: Type of citation
+            metadata: Optional metadata for enhanced formatting
+
+        Returns:
+            Professionally formatted APA7 citation
+        """
+        try:
+            # Parse citation components
+            components = self._parse_citation_components(citation_text, metadata)
+
+            # Format based on citation type
+            if citation_type == CitationType.JOURNAL_ARTICLE:
+                return self._format_journal_article(components)
+            elif citation_type == CitationType.BOOK:
+                return self._format_book(components)
+            elif citation_type == CitationType.BOOK_CHAPTER:
+                return self._format_book_chapter(components)
+            elif citation_type == CitationType.CONFERENCE_PAPER:
+                return self._format_conference_paper(components)
+            elif citation_type == CitationType.THESIS_DISSERTATION:
+                return self._format_thesis_dissertation(components)
+            elif citation_type == CitationType.WEBSITE:
+                return self._format_website(components)
+            elif citation_type == CitationType.REPORT:
+                return self._format_report(components)
+            else:
+                return self._format_generic(components)
+
+        except Exception as e:
+            logger.warning(f"Citation formatting failed: {e}")
+            return citation_text.strip()
+
+    def _parse_citation_components(self, citation_text: str, metadata: Optional[DocumentMetadata]) -> Dict[str, str]:
+        """
+        Parse citation text into components for formatting.
+
+        Args:
+            citation_text: Raw citation text
+            metadata: Optional metadata
+
+        Returns:
+            Dictionary of citation components
+        """
+        try:
+            import re
+
+            components = {
+                'authors': '',
+                'year': '',
+                'title': '',
+                'journal': '',
+                'volume': '',
+                'issue': '',
+                'pages': '',
+                'publisher': '',
+                'url': '',
+                'doi': '',
+                'editor': '',
+                'book_title': '',
+                'conference': ''
+            }
+
+            # Extract year (look for 4-digit year in parentheses or standalone)
+            year_match = re.search(r'\((\d{4})\)|(\d{4})', citation_text)
+            if year_match:
+                components['year'] = year_match.group(1) or year_match.group(2)
+
+            # Extract DOI
+            doi_match = re.search(r'doi:?\s*([^\s]+)|https?://doi\.org/([^\s]+)', citation_text, re.IGNORECASE)
+            if doi_match:
+                components['doi'] = doi_match.group(1) or doi_match.group(2)
+
+            # Extract URL
+            url_match = re.search(r'https?://[^\s]+', citation_text)
+            if url_match:
+                components['url'] = url_match.group(0)
+
+            # Extract volume and issue
+            vol_issue_match = re.search(r'(\d+)\((\d+)\)', citation_text)
+            if vol_issue_match:
+                components['volume'] = vol_issue_match.group(1)
+                components['issue'] = vol_issue_match.group(2)
+            else:
+                vol_match = re.search(r'vol\.?\s*(\d+)', citation_text, re.IGNORECASE)
+                if vol_match:
+                    components['volume'] = vol_match.group(1)
+
+            # Extract pages
+            pages_match = re.search(r'pp?\.?\s*(\d+(?:-\d+)?)', citation_text, re.IGNORECASE)
+            if pages_match:
+                components['pages'] = pages_match.group(1)
+
+            # Use metadata if available to fill gaps
+            if metadata:
+                if hasattr(metadata, 'author') and metadata.author and not components['authors']:
+                    components['authors'] = metadata.author
+                if hasattr(metadata, 'title') and metadata.title and not components['title']:
+                    components['title'] = metadata.title
+                if hasattr(metadata, 'year') and metadata.year and not components['year']:
+                    components['year'] = str(metadata.year)
+                if hasattr(metadata, 'publisher') and metadata.publisher and not components['publisher']:
+                    components['publisher'] = metadata.publisher
+
+            # Extract remaining components from text
+            if not components['authors']:
+                # Simple author extraction (first part before year or title)
+                author_match = re.match(r'^([^(]+?)(?:\s*\(\d{4}\)|\.)', citation_text)
+                if author_match:
+                    components['authors'] = author_match.group(1).strip()
+
+            if not components['title']:
+                # Extract title (usually after year, before journal/publisher)
+                title_match = re.search(r'\(\d{4}\)\.?\s*([^.]+)', citation_text)
+                if title_match:
+                    components['title'] = title_match.group(1).strip()
+
+            return components
+
+        except Exception as e:
+            logger.warning(f"Citation component parsing failed: {e}")
+            return {'authors': '', 'year': '', 'title': citation_text}
+
+    def _format_journal_article(self, components: Dict[str, str]) -> str:
+        """Format journal article citation in APA7 style."""
+        try:
+            parts = []
+
+            # Author(s)
+            if components['authors']:
+                authors = self._format_authors(components['authors'])
+                parts.append(authors)
+
+            # Year
+            if components['year']:
+                parts.append(f"({components['year']})")
+
+            # Title
+            if components['title']:
+                title = components['title'].strip()
+                if not title.endswith('.'):
+                    title += '.'
+                parts.append(title)
+
+            # Journal name (italicized)
+            journal_part = ""
+            if components['journal']:
+                journal_part = f"*{components['journal']}*"
+
+                # Volume
+                if components['volume']:
+                    journal_part += f", *{components['volume']}*"
+
+                    # Issue
+                    if components['issue']:
+                        journal_part += f"({components['issue']})"
+
+                # Pages
+                if components['pages']:
+                    journal_part += f", {components['pages']}"
+
+                journal_part += "."
+                parts.append(journal_part)
+
+            # DOI or URL
+            if components['doi']:
+                parts.append(f"https://doi.org/{components['doi']}")
+            elif components['url']:
+                parts.append(components['url'])
+
+            return ' '.join(parts)
+
+        except Exception as e:
+            logger.warning(f"Journal article formatting failed: {e}")
+            return ' '.join([v for v in components.values() if v])
+
+    def _format_book(self, components: Dict[str, str]) -> str:
+        """Format book citation in APA7 style."""
+        try:
+            parts = []
+
+            # Author(s)
+            if components['authors']:
+                authors = self._format_authors(components['authors'])
+                parts.append(authors)
+
+            # Year
+            if components['year']:
+                parts.append(f"({components['year']})")
+
+            # Title (italicized)
+            if components['title']:
+                title = components['title'].strip()
+                if not title.endswith('.'):
+                    title += '.'
+                parts.append(f"*{title}*")
+
+            # Publisher
+            if components['publisher']:
+                parts.append(f"{components['publisher']}.")
+
+            return ' '.join(parts)
+
+        except Exception as e:
+            logger.warning(f"Book formatting failed: {e}")
+            return ' '.join([v for v in components.values() if v])
+
+    def _format_authors(self, authors_text: str) -> str:
+        """
+        Format author names according to APA7 standards.
+
+        Args:
+            authors_text: Raw author text
+
+        Returns:
+            Formatted author string
+        """
+        try:
+            import re
+
+            # Split authors by common delimiters
+            authors = re.split(r'[,;&]|\sand\s', authors_text)
+            formatted_authors = []
+
+            for author in authors[:20]:  # Limit to 20 authors max
+                author = author.strip()
+                if not author:
+                    continue
+
+                # Check if already in APA format (Last, F. M.)
+                if re.match(r'^[A-Z][a-z]+,\s+[A-Z]\.', author):
+                    formatted_authors.append(author)
+                else:
+                    # Try to convert to APA format
+                    name_parts = author.split()
+                    if len(name_parts) >= 2:
+                        last_name = name_parts[-1]
+                        first_names = name_parts[:-1]
+                        initials = '. '.join([name[0].upper() for name in first_names if name]) + '.'
+                        formatted_authors.append(f"{last_name}, {initials}")
+                    else:
+                        formatted_authors.append(author)
+
+            # Format according to APA7 rules
+            if len(formatted_authors) == 1:
+                return formatted_authors[0]
+            elif len(formatted_authors) == 2:
+                return f"{formatted_authors[0]}, & {formatted_authors[1]}"
+            elif len(formatted_authors) <= 20:
+                return ', '.join(formatted_authors[:-1]) + f", & {formatted_authors[-1]}"
+            else:
+                # More than 20 authors - use ellipsis
+                return ', '.join(formatted_authors[:19]) + f", ... {formatted_authors[-1]}"
+
+        except Exception as e:
+            logger.warning(f"Author formatting failed: {e}")
+            return authors_text
+
+    def _format_book_chapter(self, components: Dict[str, str]) -> str:
+        """Format book chapter citation in APA7 style."""
+        try:
+            parts = []
+
+            # Author(s)
+            if components['authors']:
+                authors = self._format_authors(components['authors'])
+                parts.append(authors)
+
+            # Year
+            if components['year']:
+                parts.append(f"({components['year']})")
+
+            # Chapter title
+            if components['title']:
+                title = components['title'].strip()
+                if not title.endswith('.'):
+                    title += '.'
+                parts.append(title)
+
+            # Book information
+            book_part = "In "
+            if components['editor']:
+                book_part += f"{self._format_authors(components['editor'])} (Ed.), "
+
+            if components['book_title']:
+                book_part += f"*{components['book_title']}*"
+
+                if components['pages']:
+                    book_part += f" (pp. {components['pages']})"
+
+                book_part += "."
+                parts.append(book_part)
+
+            # Publisher
+            if components['publisher']:
+                parts.append(f"{components['publisher']}.")
+
+            return ' '.join(parts)
+
+        except Exception as e:
+            logger.warning(f"Book chapter formatting failed: {e}")
+            return ' '.join([v for v in components.values() if v])
+
+    def _format_conference_paper(self, components: Dict[str, str]) -> str:
+        """Format conference paper citation in APA7 style."""
+        try:
+            parts = []
+
+            # Author(s)
+            if components['authors']:
+                authors = self._format_authors(components['authors'])
+                parts.append(authors)
+
+            # Year
+            if components['year']:
+                parts.append(f"({components['year']})")
+
+            # Title
+            if components['title']:
+                title = components['title'].strip()
+                if not title.endswith('.'):
+                    title += '.'
+                parts.append(title)
+
+            # Conference information
+            if components['conference']:
+                conf_part = f"In *{components['conference']}*"
+
+                if components['pages']:
+                    conf_part += f" (pp. {components['pages']})"
+
+                conf_part += "."
+                parts.append(conf_part)
+
+            return ' '.join(parts)
+
+        except Exception as e:
+            logger.warning(f"Conference paper formatting failed: {e}")
+            return ' '.join([v for v in components.values() if v])
+
+    def _format_thesis_dissertation(self, components: Dict[str, str]) -> str:
+        """Format thesis/dissertation citation in APA7 style."""
+        try:
+            parts = []
+
+            # Author
+            if components['authors']:
+                authors = self._format_authors(components['authors'])
+                parts.append(authors)
+
+            # Year
+            if components['year']:
+                parts.append(f"({components['year']})")
+
+            # Title (italicized)
+            if components['title']:
+                title = components['title'].strip()
+                if not title.endswith('.'):
+                    title += '.'
+                parts.append(f"*{title}*")
+
+            # Degree type and institution
+            degree_info = "[Doctoral dissertation"
+            if 'master' in components.get('title', '').lower():
+                degree_info = "[Master's thesis"
+
+            if components['publisher']:  # Institution
+                degree_info += f", {components['publisher']}]."
+            else:
+                degree_info += "]."
+
+            parts.append(degree_info)
+
+            return ' '.join(parts)
+
+        except Exception as e:
+            logger.warning(f"Thesis/dissertation formatting failed: {e}")
+            return ' '.join([v for v in components.values() if v])
+
+    def _format_website(self, components: Dict[str, str]) -> str:
+        """Format website citation in APA7 style."""
+        try:
+            parts = []
+
+            # Author(s) or organization
+            if components['authors']:
+                authors = self._format_authors(components['authors'])
+                parts.append(authors)
+
+            # Year
+            if components['year']:
+                parts.append(f"({components['year']})")
+
+            # Title
+            if components['title']:
+                title = components['title'].strip()
+                if not title.endswith('.'):
+                    title += '.'
+                parts.append(title)
+
+            # Website name (if different from author)
+            if components['publisher'] and components['publisher'] != components['authors']:
+                parts.append(f"*{components['publisher']}*.")
+
+            # URL
+            if components['url']:
+                parts.append(components['url'])
+
+            return ' '.join(parts)
+
+        except Exception as e:
+            logger.warning(f"Website formatting failed: {e}")
+            return ' '.join([v for v in components.values() if v])
+
+    def _format_report(self, components: Dict[str, str]) -> str:
+        """Format report citation in APA7 style."""
+        try:
+            parts = []
+
+            # Author(s) or organization
+            if components['authors']:
+                authors = self._format_authors(components['authors'])
+                parts.append(authors)
+
+            # Year
+            if components['year']:
+                parts.append(f"({components['year']})")
+
+            # Title (italicized)
+            if components['title']:
+                title = components['title'].strip()
+                if not title.endswith('.'):
+                    title += '.'
+                parts.append(f"*{title}*")
+
+            # Publisher/Organization
+            if components['publisher']:
+                parts.append(f"{components['publisher']}.")
+
+            return ' '.join(parts)
+
+        except Exception as e:
+            logger.warning(f"Report formatting failed: {e}")
+            return ' '.join([v for v in components.values() if v])
+
+    def _format_generic(self, components: Dict[str, str]) -> str:
+        """Format generic citation when type is unknown."""
+        try:
+            parts = []
+
+            # Author(s)
+            if components['authors']:
+                authors = self._format_authors(components['authors'])
+                parts.append(authors)
+
+            # Year
+            if components['year']:
+                parts.append(f"({components['year']})")
+
+            # Title
+            if components['title']:
+                title = components['title'].strip()
+                if not title.endswith('.'):
+                    title += '.'
+                parts.append(title)
+
+            # Additional information
+            additional_info = []
+            for key in ['journal', 'publisher', 'conference']:
+                if components[key]:
+                    additional_info.append(components[key])
+
+            if additional_info:
+                parts.append(f"{', '.join(additional_info)}.")
+
+            # URL or DOI
+            if components['doi']:
+                parts.append(f"https://doi.org/{components['doi']}")
+            elif components['url']:
+                parts.append(components['url'])
+
+            return ' '.join(parts)
+
+        except Exception as e:
+            logger.warning(f"Generic formatting failed: {e}")
+            return ' '.join([v for v in components.values() if v])
 
     def _calculate_compliance_score(self, result: APA7ValidationResult) -> float:
         """Calculate compliance score based on validation results."""
